@@ -114,23 +114,26 @@ def get_user(uid, username=None):
     data = load_db()
     uid = str(uid)
     today = str(date.today())
+    
     if uid not in data["users"]:
         data["users"][uid] = {
-                        "username": username,
+            "username": username,
             "balance": 0.0,
             "joined": today,
             "referrer": None,
             "answered_questions": [],
             "daily_answers": {today: 0}
         }
-        save_db(data)
+    else:
+        if username:  # ✅ تحديث الاسم في حال تغيّر
+            data["users"][uid]["username"] = username
 
-    # تأكد من وجود daily_answers لليوم الحالي
     if today not in data["users"][uid].get("daily_answers", {}):
         data["users"][uid]["daily_answers"][today] = 0
-        save_db(data)
 
+    save_db(data)
     return data["users"][uid]
+
 
 def update_user(uid, new_data):
     data = load_db()
@@ -222,11 +225,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_data = get_user(user.id, user.username)
 
-    # ✅ أضف له 10$ مرة واحدة فقط إذا كان جديد
-    if user_data["balance"] == 0.0:
-        user_data["balance"] = 10.0
-        update_user(user.id, user_data)
-
     text = (
         f"مرحباً {user.first_name}!\n"
         "👥 كل صديق تدعوه يحصل على 0.1$\n"
@@ -266,6 +264,26 @@ async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔙 رجوع", callback_data="back")]
     ]))
 
+async def list_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in ADMIN_IDS:
+        await update.effective_message.reply_text("❌ ليس لديك صلاحية تنفيذ هذا الأمر.")
+        return
+
+    db = load_db()
+    users = db.get("users", {})
+    if not users:
+        await update.effective_message.reply_text("لا يوجد مستخدمون.")
+        return
+
+    text = "📋 قائمة المستخدمين:\n\n"
+    for uid, data in users.items():
+        username = data.get("username") or "غير متوفر"
+        balance = data.get("balance", 0.0)
+        text += f"🆔 {uid} – @{username} – 💰 {balance}$\n"
+
+    for part in split_message(text):
+        await update.effective_message.reply_text(part)
 
 
 async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -368,6 +386,7 @@ async def main():
             handle_binance_id
         )
     )
+    application.add_handler(CommandHandler("list_users", list_users_command))
 
     await application.run_polling()
 

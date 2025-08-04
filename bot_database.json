@@ -38,6 +38,16 @@
             "daily_answers": {
                 "2025-08-04": 3
             }
+        },
+        "123456789": {
+            "username": null,
+            "balance": 100.0,
+            "joined": "2025-08-04",
+            "referrer": null,
+            "answered_questions": [],
+            "daily_answers": {
+                "2025-08-04": 0
+            }
         }
     },
     "withdrawals": [],
